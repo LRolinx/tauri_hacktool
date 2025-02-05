@@ -117,6 +117,20 @@ const readProcessMemory = async (processHandle: number, baseAddress: number, siz
   return JSON.parse(await invoke('read_memory', { handle: processHandle, baseAddress: baseAddress, size }))
 }
 
+// 根据x大小返回限制范围
+export const reverseLinearNormalize = (x: number, dataMin: number, dataMax: number, min: number, max: number) => {
+  // 计算归一化值 (这里是反向映射的)
+  const normalized = (x - dataMin) / (dataMax - dataMin)
+
+  // 将归一化值映射到 [max, min] 范围
+  const mapped = normalized * (max - min) + min
+
+  // 返回反转后的结果：x越小，返回值越接近max
+  let data = max - mapped
+
+  return data <= min ? min : data >= max ? max : data
+}
+
 //字节转u32
 const byteArrayToU32 = (byteArray: any[], isLittleEndian = true) => {
   const data: number[] = []
