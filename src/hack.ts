@@ -45,22 +45,76 @@ export const getWindowInfo = async (handle: number): Promise<WindowInfo> => {
 /**
  * 通过进程名获取PID
  */
-export const GetProcessIDByName = async (name: string): Promise<number> => {
+export const getProcessIDByName = async (name: string): Promise<number> => {
   return await invoke('get_process_id_by_name', { name: name })
 }
 
 /**
  * 通过pid获取进程句柄
  */
-export const GetProcessHandle = async (pid: number): Promise<number> => {
+export const getProcessHandle = async (pid: number): Promise<number> => {
   return await invoke('get_process_handle', { pid: pid })
 }
 
 /**
  * 获取基础模块地址
  */
-export const GetModuleBaseAddress = async (pid: number, name: string): Promise<number> => {
+export const getModuleBaseAddress = async (pid: number, name: string): Promise<number> => {
   return await invoke('get_module_base_address', { pid: pid, name: name })
+}
+
+/**
+ * 读取进程内存(u32)
+ */
+export const readProcessMemoryU32 = async (processHandle: number, baseAddress: number, size: number = 4): Promise<MemoryReadResult> => {
+  const data = await readProcessMemory(processHandle, baseAddress, size)
+  data.value = byteArrayToU32(data.bytes)
+
+  return data
+}
+
+/**
+ * 读取进程内存(浮点)
+ */
+export const readProcessMemoryF32 = async (processHandle: number, baseAddress: number, size: number = 4): Promise<MemoryReadResult> => {
+  const data = await readProcessMemory(processHandle, baseAddress, size)
+  data.value = byteArrayToF32(data.bytes)
+  return data
+}
+
+/**
+ * 写入进程内存
+ */
+export const writeProcessMemory = async (handle: number, baseAddress: number, buffer: number): Promise<boolean> => {
+  return await invoke('write_memory', { handle: handle, baseAddress: baseAddress, buffer: buffer })
+}
+
+/**
+ * 世界坐标转窗口坐标
+ * @param world_position 世界坐标
+ * @param viewMatrix 相机矩阵
+ * @param windowInfo 窗口信息
+ * @returns 屏幕坐标
+ */
+export const worldToScreen = async (worldPosition: number[], viewMatrix: number[], windowInfo: WindowInfo): Promise<number[]> => {
+  return await invoke('world_to_screen', { worldPosition: worldPosition, viewMatrix: viewMatrix, windowWidth: windowInfo.width, windowHeight: windowInfo.height })
+}
+
+/**
+ * 获取两点的距离
+ * @param worldPosition
+ * @param targetPosition
+ * @returns
+ */
+export const calculateSizeBasedOnistance = async (worldPosition: number[], targetPosition: number[]): Promise<number> => {
+  return await invoke('calculate_size_based_on_distance', { worldPosition: worldPosition, targetPosition: targetPosition })
+}
+
+/**
+ * 读取进程内存(u32)
+ */
+const readProcessMemory = async (processHandle: number, baseAddress: number, size: number = 4): Promise<MemoryReadResult> => {
+  return JSON.parse(await invoke('read_memory', { handle: processHandle, baseAddress: baseAddress, size }))
 }
 
 //字节转u32
@@ -84,6 +138,7 @@ const byteArrayToU32 = (byteArray: any[], isLittleEndian = true) => {
   return data
 }
 
+// 字节转f32
 const byteArrayToF32 = (byteArray: any[], isLittleEndian = true): number[] => {
   const data: number[] = []
   const buffer = new ArrayBuffer(4) // 4 bytes for float32
@@ -102,58 +157,4 @@ const byteArrayToF32 = (byteArray: any[], isLittleEndian = true): number[] => {
   }
 
   return data
-}
-
-/**
- * 读取进程内存(u32)
- */
-const ReadProcessMemory = async (processHandle: number, baseAddress: number, size: number = 4): Promise<MemoryReadResult> => {
-  return JSON.parse(await invoke('read_memory', { handle: processHandle, baseAddress: baseAddress, size }))
-}
-
-/**
- * 读取进程内存(u32)
- */
-export const ReadProcessMemoryU32 = async (processHandle: number, baseAddress: number, size: number = 4): Promise<MemoryReadResult> => {
-  const data = await ReadProcessMemory(processHandle, baseAddress, size)
-  data.value = byteArrayToU32(data.bytes)
-
-  return data
-}
-
-/**
- * 读取进程内存(浮点)
- */
-export const ReadProcessMemoryF32 = async (processHandle: number, baseAddress: number, size: number = 4): Promise<MemoryReadResult> => {
-  const data = await ReadProcessMemory(processHandle, baseAddress, size)
-  data.value = byteArrayToF32(data.bytes)
-  return data
-}
-
-/**
- * 写入进程内存
- */
-export const WriteProcessMemory = async (handle: number, baseAddress: number, buffer: number): Promise<boolean> => {
-  return await invoke('write_memory', { handle: handle, baseAddress: baseAddress, buffer: buffer })
-}
-
-/**
- * 世界坐标转窗口坐标
- * @param world_position 世界坐标
- * @param viewMatrix 相机矩阵
- * @param windowInfo 窗口信息
- * @returns 屏幕坐标
- */
-export const worldToScreen = async (worldPosition: number[], viewMatrix: number[], windowInfo: WindowInfo): Promise<number[]> => {
-  return await invoke('world_to_screen', { worldPosition: worldPosition, viewMatrix: viewMatrix, windowWidth: windowInfo.width, windowHeight: windowInfo.height })
-}
-
-/**
- * 获取两点的距离
- * @param worldPosition 
- * @param targetPosition 
- * @returns 
- */
-export const calculateSizeBasedOnistance = async (worldPosition: number[], targetPosition: number[]): Promise<number> => {
-  return await invoke('calculate_size_based_on_distance', { worldPosition: worldPosition, targetPosition: targetPosition })
 }

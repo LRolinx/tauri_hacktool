@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { nextTick, onMounted, reactive, ref } from 'vue'
 import p5js from 'p5'
-import { findWindow, GetModuleBaseAddress, GetProcessHandle, GetProcessIDByName, getWindowInfo, ReadProcessMemoryF32, ReadProcessMemoryU32, WindowInfo, worldToScreen } from './hack'
+import { findWindow, getModuleBaseAddress, getProcessHandle, getProcessIDByName, getWindowInfo, readProcessMemoryF32, readProcessMemoryU32, WindowInfo, worldToScreen } from './hack'
 
 const p5ref = ref()
 
@@ -35,14 +35,14 @@ onMounted(() => {
 
 	new p5js((p5) => {
       p5.setup = async () => {
-        // console.log(p5)
+        
         p5.createCanvas(p5ref.value.offsetWidth, p5ref.value.offsetHeight)
-        // 蓝蝶原本名称为 BlueStacks
+
         sessionStorage['windowHanld'] = await findWindow('Counter-Strike Source')
-        sessionStorage['pId'] = await GetProcessIDByName('hl2.exe')
-        sessionStorage['processHandle'] = await GetProcessHandle(parseInt(sessionStorage['pId']))
-        sessionStorage['serverDLLBaseAddr'] = await GetModuleBaseAddress(parseInt(sessionStorage['pId']), 'server.dll')
-        sessionStorage['engineDLLBaseAddr'] = await GetModuleBaseAddress(parseInt(sessionStorage['pId']), 'engine.dll')
+        sessionStorage['pId'] = await getProcessIDByName('hl2.exe')
+        sessionStorage['processHandle'] = await getProcessHandle(parseInt(sessionStorage['pId']))
+        sessionStorage['serverDLLBaseAddr'] = await getModuleBaseAddress(parseInt(sessionStorage['pId']), 'server.dll')
+        sessionStorage['engineDLLBaseAddr'] = await getModuleBaseAddress(parseInt(sessionStorage['pId']), 'engine.dll')
       }
 
 	  p5.draw = async () => {
@@ -53,15 +53,15 @@ onMounted(() => {
       windowInfo.value = await getWindowInfo(windowHanld)
 
       const data = {
-        homeNum: (await ReadProcessMemoryU32(processHandle, serverDLLBaseAddr + 0x4f2150)).value[0],
-        cameraMatrix: (await ReadProcessMemoryF32(processHandle, engineDLLBaseAddr + 0x5b0d68, 64)).value,
+        homeNum: (await readProcessMemoryU32(processHandle, serverDLLBaseAddr + 0x4f2150)).value[0],
+        cameraMatrix: (await readProcessMemoryF32(processHandle, engineDLLBaseAddr + 0x5b0d68, 64)).value,
       }
 
       if (lastHomeNum.value != data.homeNum) {
         // 更新房间基址地址
         const newUserListBaseAddr = []
         for (let i = 0; i < data.homeNum; i++) {
-          newUserListBaseAddr.push((await ReadProcessMemoryU32(processHandle, serverDLLBaseAddr + 0x004f615c + i * 16)).value[0])
+          newUserListBaseAddr.push((await readProcessMemoryU32(processHandle, serverDLLBaseAddr + 0x004f615c + i * 16)).value[0])
         }
         userListBaseAddr.value = newUserListBaseAddr
         lastHomeNum.value = data.homeNum
@@ -92,11 +92,11 @@ onMounted(() => {
         // 血量
         //   const boolm = (await ReadProcessMemoryU32(processHandle, userListBaseAddr.value[i] + 0xe4)).value[0]
 
-        ReadProcessMemoryU32(processHandle, userListBaseAddr.value[i] + 0xe4).then(async (boolm) => {
+        readProcessMemoryU32(processHandle, userListBaseAddr.value[i] + 0xe4).then(async (boolm) => {
           if (boolm.value[0] != 1) {
             // 坐标信息
             //   const pos = (await ReadProcessMemoryF32(processHandle, userListBaseAddr.value[i] + 0x280, 12)).value
-            ReadProcessMemoryF32(processHandle, userListBaseAddr.value[i] + 0x280, 12).then(async (pos) => {
+            readProcessMemoryF32(processHandle, userListBaseAddr.value[i] + 0x280, 12).then(async (pos) => {
               const enP = await worldToScreen(pos.value, data.cameraMatrix, windowInfo.value)
               //   const dir = await calculateSizeBasedOnistance(data.userPos, data.enemyPos)
 
