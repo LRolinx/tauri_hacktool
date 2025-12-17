@@ -1,9 +1,14 @@
 mod hack;
-use std::ffi::c_void;
-
 use serde::{Deserialize, Serialize};
+use std::char::from_u32;
+use std::ffi::c_void;
 use tauri::Manager;
 use windows::Win32::Foundation::{HANDLE, HWND};
+
+use futures_util::{SinkExt, StreamExt};
+use tokio::net::TcpListener;
+use tokio_tungstenite::accept_async;
+use tokio_tungstenite::tungstenite::Message;
 
 #[derive(Serialize, Deserialize)]
 struct WindowInfo {
@@ -136,6 +141,12 @@ fn calculate_size_based_on_distance(
 pub fn run() {
     tauri::Builder::default()
         .setup(|app| {
+            // 单独起一个线程跑 tokio
+            std::thread::spawn(|| {
+                let rt = tokio::runtime::Runtime::new().unwrap();
+                rt.block_on(start_ws_server());
+            });
+
             let window = app.get_webview_window("main").unwrap();
             #[cfg(windows)]
             {
@@ -168,8 +179,88 @@ pub fn run() {
             // read_memory_u32,
             write_memory,
             world_to_screen,
-			calculate_size_based_on_distance
+            calculate_size_based_on_distance
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+// 启动Websocket 服务器
+async fn start_ws_server() {
+    let addr = "127.0.0.1:9001";
+    let listener = TcpListener::bind(addr).await.unwrap();
+
+    println!("WS server started at {}", addr);
+
+    while let Ok((stream, _)) = listener.accept().await {
+        tokio::spawn(async move {
+            let ws = accept_async(stream).await.unwrap();
+            let (mut write, mut read) = ws.split();
+
+            while let Some(Ok(msg)) = read.next().await {
+                if let Message::Text(text) = msg {
+                    // println!("Recv: {}", text);
+                    let mut parts = text.split_whitespace();
+
+                    // 获取命令
+                    if let Some(command) = parts.next() {
+                        // 参数
+                        let args: Vec<&str> = parts.collect();
+
+                        match command {
+                            "findWindow" => {
+                                let name: &str = &args[0];
+                                // 查找窗口句柄
+                                let value = find_window_w(name);
+                                let text_message = format!("findWindow {}", value.unwrap());
+
+                                write.send(Message::text(text_message)).await.unwrap();
+                            }
+                            "getWindowInfo" => {
+                                let str_handle: &str = &args[0];
+                                let handle = str_handle.parse().unwrap();
+                                // 查找窗口句柄
+                                let value = get_window_info(handle);
+                                let text_message = format!("getWindowInfo {}", value.unwrap());
+
+                                write.send(Message::text(text_message)).await.unwrap();
+                            }
+                            "getProcessIDByName" => {
+                                let name: &str = &args[0];
+                                // 查找窗口句柄
+                                let value = get_process_id_by_name(name);
+                                let text_message = format!("getProcessIDByName {}", value.unwrap());
+
+                                write.send(Message::text(text_message)).await.unwrap();
+                            }
+                            "getProcessHandle" => {
+                                let str_pid: &str = &args[0];
+                                let pid = str_pid.parse().unwrap();
+                                // 查找窗口句柄
+                                let value = get_process_handle(pid);
+                                let text_message = format!("getProcessHandle {}", value.unwrap());
+
+                                write.send(Message::text(text_message)).await.unwrap();
+                            }
+                            "getModuleBaseAddress" => {
+                                let str_pid: &str = &args[0];
+                                let pid = str_pid.parse().unwrap();
+                                let name: &str = &args[1];
+                                // 查找窗口句柄
+                                let value = get_module_base_address(pid, name);
+                                let text_message =
+                                    format!("getModuleBaseAddress {}", value.unwrap());
+
+                                write.send(Message::text(text_message)).await.unwrap();
+                            }
+
+                            _ => println!("无效命令"),
+                        }
+                    } else {
+                        println!("无法识别的格式")
+                    }
+                }
+            }
+        });
+    }
 }

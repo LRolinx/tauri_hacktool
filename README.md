@@ -2,11 +2,20 @@
 
 ![alt text](Snipaste_2025-02-05_21-11-56.png)
 使用 Vue 前端和 Rust 后端打造 FPS 透视
-前端使用 P5js 进行 canvas 绘制
+前端使用 pixijs 进行绘制
 后端封装内存读取工具，前端快速编写代码无需重启调试
-Vue 前端与后端通讯获取内存数据并在前端渲染
+Vue 前端与后端实时通讯获取内存数据并在前端渲染
 
-hack.ts 可用函数
+## 命令
+```bash
+    # 安装依赖
+	pnpm i
+
+    # 运行项目
+    pnpm tauri dev
+```
+
+hack.ts 可用函数 以下函数会通过WebSocket请求 需要监听WebSocket消息返回值
 
 ```ts
 findWindow(窗口名称) // 查找窗口名返回窗口句柄

@@ -4,89 +4,97 @@ import { invoke } from '@tauri-apps/api/core'
  */
 
 export type V2 = {
-  x: number
-  y: number
+	x: number
+	y: number
 }
 
 export type V3 = {
-  x: number
-  y: number
-  z: number
+	x: number
+	y: number
+	z: number
 }
 
 export type WindowInfo = {
-  x: number
-  y: number
-  width: number
-  height: number
-  err: boolean
+	x: number
+	y: number
+	width: number
+	height: number
+	err: boolean
 }
 
 export type MemoryReadResult = {
-  address: number
-  bytes: any[]
-  value: any[]
+	address: number
+	bytes: any[]
+	value: any[]
 }
 
 /**
  * 查找窗口句柄
  */
-export const findWindow = async (name: string): Promise<number> => {
-  return await invoke('find_window_w', { name: name })
+export const findWindow = (name: string) => {
+	window.ws!.send(`findWindow ${name}`)
+	//   return await invoke('find_window_w', { name: name })
 }
 
 /**
  * 获取窗口信息
  */
-export const getWindowInfo = async (handle: number): Promise<WindowInfo> => {
-  return JSON.parse(await invoke('get_window_info', { handle: handle }))
+export const getWindowInfo = (handle: string) => {
+	window.ws!.send(`getWindowInfo ${handle}`)
+	//   return JSON.parse(await invoke('get_window_info', { handle: handle }))
 }
 
 /**
  * 通过进程名获取PID
  */
-export const getProcessIDByName = async (name: string): Promise<number> => {
-  return await invoke('get_process_id_by_name', { name: name })
+export const getProcessIDByName = (name: string) => {
+	window.ws!.send(`getProcessIDByName ${name}`)
+	//   return await invoke('get_process_id_by_name', { name: name })
 }
 
 /**
  * 通过pid获取进程句柄
  */
-export const getProcessHandle = async (pid: number): Promise<number> => {
-  return await invoke('get_process_handle', { pid: pid })
+export const getProcessHandle = (pid: number) => {
+	window.ws!.send(`getProcessHandle ${pid}`)
+	// return await invoke('get_process_handle', { pid: pid })
 }
 
 /**
  * 获取基础模块地址
  */
-export const getModuleBaseAddress = async (pid: number, name: string): Promise<number> => {
-  return await invoke('get_module_base_address', { pid: pid, name: name })
+export const getModuleBaseAddress = (pid: number, name: string) => {
+	window.ws!.send(`getModuleBaseAddress ${pid} ${name}`)
+	// return await invoke('get_module_base_address', { pid: pid, name: name })
 }
 
 /**
  * 读取进程内存(u32)
  */
-export const readProcessMemoryU32 = async (processHandle: number, baseAddress: number, size: number = 4): Promise<MemoryReadResult> => {
-  const data = await readProcessMemory(processHandle, baseAddress, size)
-  data.value = byteArrayToU32(data.bytes)
+export const readProcessMemoryU32 = (processHandle: number, baseAddress: number, size: number = 4) => {
+	window.ws!.send(`readProcessMemoryU32 ${processHandle} ${baseAddress} ${size}`)
+	// const data = await readProcessMemory(processHandle, baseAddress, size)
+	// data.value = byteArrayToU32(data.bytes)
 
-  return data
+	// return data
 }
 
 /**
  * 读取进程内存(浮点)
  */
-export const readProcessMemoryF32 = async (processHandle: number, baseAddress: number, size: number = 4): Promise<MemoryReadResult> => {
-  const data = await readProcessMemory(processHandle, baseAddress, size)
-  data.value = byteArrayToF32(data.bytes)
-  return data
+export const readProcessMemoryF32 = (processHandle: number, baseAddress: number, size: number = 4) => {
+	window.ws!.send(`readProcessMemoryU32 ${processHandle} ${baseAddress} ${size}`)
+	// const data = await readProcessMemory(processHandle, baseAddress, size)
+	// data.value = byteArrayToF32(data.bytes)
+	// return data
 }
 
 /**
  * 写入进程内存
  */
-export const writeProcessMemory = async (handle: number, baseAddress: number, buffer: number): Promise<boolean> => {
-  return await invoke('write_memory', { handle: handle, baseAddress: baseAddress, buffer: buffer })
+export const writeProcessMemory = (handle: number, baseAddress: number, buffer: number) => {
+	window.ws!.send(`writeProcessMemory ${handle} ${baseAddress} ${buffer}`)
+	// return await invoke('write_memory', { handle: handle, baseAddress: baseAddress, buffer: buffer })
 }
 
 /**
@@ -97,7 +105,7 @@ export const writeProcessMemory = async (handle: number, baseAddress: number, bu
  * @returns 屏幕坐标
  */
 export const worldToScreen = async (worldPosition: number[], viewMatrix: number[], windowInfo: WindowInfo): Promise<number[]> => {
-  return await invoke('world_to_screen', { worldPosition: worldPosition, viewMatrix: viewMatrix, windowWidth: windowInfo.width, windowHeight: windowInfo.height })
+	return await invoke('world_to_screen', { worldPosition: worldPosition, viewMatrix: viewMatrix, windowWidth: windowInfo.width, windowHeight: windowInfo.height })
 }
 
 /**
@@ -107,68 +115,68 @@ export const worldToScreen = async (worldPosition: number[], viewMatrix: number[
  * @returns
  */
 export const calculateSizeBasedOnistance = async (worldPosition: number[], targetPosition: number[]): Promise<number> => {
-  return await invoke('calculate_size_based_on_distance', { worldPosition: worldPosition, targetPosition: targetPosition })
+	return await invoke('calculate_size_based_on_distance', { worldPosition: worldPosition, targetPosition: targetPosition })
 }
 
 /**
  * 读取进程内存(u32)
  */
 const readProcessMemory = async (processHandle: number, baseAddress: number, size: number = 4): Promise<MemoryReadResult> => {
-  return JSON.parse(await invoke('read_memory', { handle: processHandle, baseAddress: baseAddress, size }))
+	return JSON.parse(await invoke('read_memory', { handle: processHandle, baseAddress: baseAddress, size }))
 }
 
 // 根据x大小返回限制范围
 export const reverseLinearNormalize = (x: number, dataMin: number, dataMax: number, min: number, max: number) => {
-  // 计算归一化值 (这里是反向映射的)
-  const normalized = (x - dataMin) / (dataMax - dataMin)
+	// 计算归一化值 (这里是反向映射的)
+	const normalized = (x - dataMin) / (dataMax - dataMin)
 
-  // 将归一化值映射到 [max, min] 范围
-  const mapped = normalized * (max - min) + min
+	// 将归一化值映射到 [max, min] 范围
+	const mapped = normalized * (max - min) + min
 
-  // 返回反转后的结果：x越小，返回值越接近max
-  let data = max - mapped
+	// 返回反转后的结果：x越小，返回值越接近max
+	let data = max - mapped
 
-  return data <= min ? min : data >= max ? max : data
+	return data <= min ? min : data >= max ? max : data
 }
 
 //字节转u32
 const byteArrayToU32 = (byteArray: any[], isLittleEndian = true) => {
-  const data: number[] = []
-  const buffer = new ArrayBuffer(4) // 4 bytes for float32
-  const view = new DataView(buffer)
+	const data: number[] = []
+	const buffer = new ArrayBuffer(4) // 4 bytes for float32
+	const view = new DataView(buffer)
 
-  // 每次4字节转成一个32位浮点数
-  for (let i = 0; i < byteArray.length; i += 4) {
-    // 将字节写入 ArrayBuffer
-    view.setUint8(0, byteArray[i])
-    view.setUint8(1, byteArray[i + 1])
-    view.setUint8(2, byteArray[i + 2])
-    view.setUint8(3, byteArray[i + 3])
+	// 每次4字节转成一个32位浮点数
+	for (let i = 0; i < byteArray.length; i += 4) {
+		// 将字节写入 ArrayBuffer
+		view.setUint8(0, byteArray[i])
+		view.setUint8(1, byteArray[i + 1])
+		view.setUint8(2, byteArray[i + 2])
+		view.setUint8(3, byteArray[i + 3])
 
-    // 获取32位浮点数，并根据字节序进行转换
-    data.push(view.getUint32(0, isLittleEndian))
-  }
+		// 获取32位浮点数，并根据字节序进行转换
+		data.push(view.getUint32(0, isLittleEndian))
+	}
 
-  return data
+	return data
 }
 
 // 字节转f32
 const byteArrayToF32 = (byteArray: any[], isLittleEndian = true): number[] => {
-  const data: number[] = []
-  const buffer = new ArrayBuffer(4) // 4 bytes for float32
-  const view = new DataView(buffer)
+	const data: number[] = []
+	const buffer = new ArrayBuffer(4) // 4 bytes for float32
+	const view = new DataView(buffer)
 
-  // 每次4字节转成一个32位浮点数
-  for (let i = 0; i < byteArray.length; i += 4) {
-    // 将字节写入 ArrayBuffer
-    view.setUint8(0, byteArray[i])
-    view.setUint8(1, byteArray[i + 1])
-    view.setUint8(2, byteArray[i + 2])
-    view.setUint8(3, byteArray[i + 3])
+	// 每次4字节转成一个32位浮点数
+	for (let i = 0; i < byteArray.length; i += 4) {
+		// 将字节写入 ArrayBuffer
+		view.setUint8(0, byteArray[i])
+		view.setUint8(1, byteArray[i + 1])
+		view.setUint8(2, byteArray[i + 2])
+		view.setUint8(3, byteArray[i + 3])
 
-    // 获取32位浮点数，并根据字节序进行转换
-    data.push(view.getFloat32(0, isLittleEndian))
-  }
+		// 获取32位浮点数，并根据字节序进行转换
+		data.push(view.getFloat32(0, isLittleEndian))
+	}
 
-  return data
+	return data
 }
