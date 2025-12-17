@@ -22,7 +22,7 @@ const userListBaseAddr = ref<any[]>([])
 // 初始化
 const init = async () => {
   findWindow('任务管理器')
-  getProcessIDByName('hl2.exe')
+//   getProcessIDByName('hl2.exe')
 
   //   sessionStorage['processHandle'] = await getProcessHandle(parseInt(sessionStorage['pId']))
   //   sessionStorage['serverDLLBaseAddr'] = await getModuleBaseAddress(parseInt(sessionStorage['pId']), 'server.dll')
