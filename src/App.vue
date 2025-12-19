@@ -53,7 +53,7 @@ const init = async () => {
   }
 
   // 初始化 pixijs
-  await app.init({ background: '#fff', backgroundAlpha: 0, resizeTo: pixiRef.value, preference: 'webgpu' })
+  await app.init({ background: '#000', backgroundAlpha: 0, resizeTo: pixiRef.value, preference: 'webgpu' })
   // 设置画布到div
   pixiRef.value.appendChild(app.canvas)
 
