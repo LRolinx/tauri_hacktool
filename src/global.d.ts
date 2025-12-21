@@ -1,3 +1,6 @@
+import { SocketClient } from './Socket_Client'
+
+
 interface Window {
-	ws?: WebSocket
+	socket?: SocketClient
 }

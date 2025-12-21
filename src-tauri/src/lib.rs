@@ -5,6 +5,7 @@ use std::ffi::c_void;
 use tauri::Manager;
 use windows::Win32::Foundation::{HANDLE, HWND};
 
+use crate::hack::{find_pid_by_name, find_winhwnd_by_pid, read_memory_chain};
 use futures_util::{SinkExt, StreamExt};
 use tokio::net::TcpListener;
 use tokio_tungstenite::accept_async;
@@ -19,21 +20,34 @@ struct WindowInfo {
     err: bool,
 }
 
-// 通过窗口名获取窗口句柄
+/**通过进程名来查找进程pid*/
 #[tauri::command]
-fn find_window_w(name: &str) -> Option<u32> {
-    let window_handle = hack::find_window_w(name)?;
-    Some(window_handle)
+fn findPidByName(name: &str) -> Option<u32> {
+    let pid = hack::find_pid_by_name(name);
+    pid
 }
 
-// 通过u32获取窗口信息
+/**通过进程pid查找主窗口句柄*/
 #[tauri::command]
-fn get_window_info(handle: u32) -> Option<String> {
+fn findWinhwndByPid(pid: u32) -> Option<u32> {
+    let winhwnd = crate::hack::find_winhwnd_by_pid(pid);
+    Some(winhwnd.unwrap().0 as u32)
+}
+
+/**通过进程pid获取基础模块地址*/
+#[tauri::command]
+fn findModuleBaseAddressByPid(pid: u32, module_name: &str) -> Option<usize> {
+    let value = get_module_base_address(pid, module_name);
+    value
+}
+
+// 通过窗口句柄获取窗口信息
+fn get_window_info(hwnd: Option<HWND>) -> Option<String> {
     // 将 u32 转换为 HWND
-    let hwnd = HWND(handle as *mut c_void);
+    // let hwnd = HWND(handle as *mut c_void);
     // let window_info = hack::get_window_info(Some(hwnd));
 
-    if let Some(window_info) = hack::get_window_info(Some((hwnd))) {
+    if let Some(window_info) = hack::get_window_info(hwnd) {
         let data = WindowInfo {
             x: window_info.rcClient.left,
             y: window_info.rcClient.top,
@@ -57,13 +71,13 @@ fn get_window_info(handle: u32) -> Option<String> {
 // 通过模块名获取基址
 #[tauri::command]
 fn get_process_id_by_name(name: &str) -> Option<u32> {
-    let pid = hack::get_process_id(name);
+    let pid = hack::find_pid_by_name(name);
     pid
 }
 
-// 通过PID获取句柄
+// 通过进程pid获取进程句柄
 #[tauri::command]
-fn get_process_handle(pid: u32) -> Option<u32> {
+fn findProcessHandleByPid(pid: u32) -> Option<u32> {
     // // 将 u32 转换为 HWND
     // let hwnd = HWND(pid as *mut c_void);
     let process_handle = hack::get_process_handle(pid);
@@ -72,7 +86,7 @@ fn get_process_handle(pid: u32) -> Option<u32> {
 
 // 通过模块名获取基址
 #[tauri::command]
-fn get_module_base_address(pid: u32, name: &str) -> Option<u32> {
+fn get_module_base_address(pid: u32, name: &str) -> Option<usize> {
     let module_base_addr = hack::get_module_base_address(pid, name)?;
     Some(module_base_addr)
 }
@@ -169,14 +183,13 @@ pub fn run() {
         })
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
-            find_window_w,
-            get_window_info,
+            findPidByName,
+            findProcessHandleByPid,
+            findWinhwndByPid,
+            findModuleBaseAddressByPid,
             get_process_id_by_name,
             get_module_base_address,
-            get_process_handle,
             read_memory,
-            // read_memory_f32,
-            // read_memory_u32,
             write_memory,
             world_to_screen,
             calculate_size_based_on_distance
@@ -208,23 +221,19 @@ async fn start_ws_server() {
                         let args: Vec<&str> = parts.collect();
 
                         match command {
-                            "findWindow" => {
-                                let name: &str = &args[0];
-                                // 查找窗口句柄
-                                let value = find_window_w(name);
-                                let text_message = format!("findWindow {}", value.unwrap());
+                            "getWindowInfoByWinhwnd" => {
+                                // 通过进程名获取窗口信息
+                                let str_winhwnd: &str = &args[0];
+                                let winhwnd: u32 = str_winhwnd.parse().unwrap();
+                                let hwnd = HWND(winhwnd as *mut c_void);
+
+                                let info = get_window_info(Some(hwnd));
+                                let text_message =
+                                    format!("getWindowInfoByWinhwnd {}", info.unwrap());
 
                                 write.send(Message::text(text_message)).await.unwrap();
                             }
-                            "getWindowInfo" => {
-                                let str_handle: &str = &args[0];
-                                let handle = str_handle.parse().unwrap();
-                                // 查找窗口句柄
-                                let value = get_window_info(handle);
-                                let text_message = format!("getWindowInfo {}", value.unwrap());
 
-                                write.send(Message::text(text_message)).await.unwrap();
-                            }
                             "getProcessIDByName" => {
                                 let name: &str = &args[0];
                                 // 查找窗口句柄
@@ -233,23 +242,31 @@ async fn start_ws_server() {
 
                                 write.send(Message::text(text_message)).await.unwrap();
                             }
-                            "getProcessHandle" => {
-                                let str_pid: &str = &args[0];
-                                let pid = str_pid.parse().unwrap();
-                                // 查找窗口句柄
-                                let value = get_process_handle(pid);
-                                let text_message = format!("getProcessHandle {}", value.unwrap());
 
-                                write.send(Message::text(text_message)).await.unwrap();
-                            }
-                            "getModuleBaseAddress" => {
-                                let str_pid: &str = &args[0];
-                                let pid = str_pid.parse().unwrap();
-                                let name: &str = &args[1];
-                                // 查找窗口句柄
-                                let value = get_module_base_address(pid, name);
+                            "readMemoryChain" => {
+                                // 读内存带偏移
+                                let str_id: &str = &args[0];
+                                let str_processHandle: &str = &args[1];
+                                let str_baseAddress: &str = &args[2];
+                                // 字符串数字转u32
+                                let str_offsets = &args[3].split(",").map(|s| s.parse().unwrap()).collect::<Vec<usize>>();
+                                let str_size: &str = &args[4];
+
+                                let ph: u32 = str_processHandle.parse().unwrap();
+                                let process_handle = HANDLE(ph as *mut c_void);
+                                let base_address = str_baseAddress.parse().unwrap();
+                                let offsets = str_offsets;
+                                let size = str_size.parse().unwrap();
+
+                                let memory_data = read_memory_chain(
+                                    process_handle,
+                                    base_address,
+                                    offsets,
+                                    Some(size),
+                                );
+
                                 let text_message =
-                                    format!("getModuleBaseAddress {}", value.unwrap());
+                                    format!("readMemoryChain {str_id} {}", memory_data.unwrap());
 
                                 write.send(Message::text(text_message)).await.unwrap();
                             }

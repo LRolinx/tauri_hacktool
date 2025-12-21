@@ -6,7 +6,7 @@
   "build": {
     "beforeDevCommand": "pnpm dev",
     "devUrl": "http://localhost:3000",
-    "beforeBuildCommand": "pnpm build",
+    "beforeBuildCommand": "pnpm dev",
     "frontendDist": "../dist"
   },
   "app": {
@@ -15,7 +15,7 @@
         "title": "tauri_hacktool",
         "width": 800,
         "height": 600,
-		"fullscreen": false,
+		"fullscreen": true,
         "resizable": false,
         "transparent": true,
         "alwaysOnTop": true
