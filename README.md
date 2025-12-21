@@ -23,7 +23,7 @@ Vue 前端与后端实时通讯获取内存数据并在前端渲染
     pnpm tauri run
 ```
 
-hack.ts 可用函数 以下函数会通过WebSocket请求 需要监听WebSocket消息返回值
+hack.ts 可用函数
 
 ```ts
 findPidByName(进程名) // 通过进程名来查找进程pid
