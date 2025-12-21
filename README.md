@@ -38,7 +38,11 @@ getWindowInfoByWinhwnd(窗口句柄) // 通过窗口句柄获取窗口信息（�
 
 readMemoryChain(唯一ID,进程句柄,内存地址,[偏移数组],数据大小) // 读取内存+多层偏移（通过Socket返回值）
 
+byteOffset(内存数组，偏移，数据大小) // 内存偏移工具 offset使用数字为10进制 使用0x00为16进制
 
+byteArrayToU32(内存数组) // 字节转整数
+
+byteArrayToF32(内存数组) // 字节转浮点数
 
 worldToScreen(世界坐标,相机矩阵,窗口信息) // 世界坐标转屏幕坐标
 
